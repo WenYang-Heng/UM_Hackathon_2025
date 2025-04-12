@@ -1,5 +1,3 @@
-# evaluation.py
-
 import numpy as np
 import pandas as pd
 
@@ -27,9 +25,6 @@ def calculate_trade_per_interval(df):
 #     return (end_value / start_value) ** (1 / years) - 1
 
 def evaluate_strategy(df):
-    """
-    Accepts the result DataFrame of a strategy and returns evaluation metrics.
-    """
     return {
         "Sharpe Ratio": calculate_sharpe_ratio(df),
         "Max Drawdown": calculate_max_drawdown(df),

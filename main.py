@@ -30,7 +30,7 @@ async def main():
             window=window
         )
 
-        results = bt.run()  # returns a DataFrame with equity, pnl, etc.
+        results = bt.run() 
         print(results)
         metrics = evaluate_strategy(results)
 

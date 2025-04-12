@@ -8,5 +8,5 @@ class Backtest:
 
     def run(self):
         for i in range(len(self.data)):
-            self.strategy.on_data(i)
+            self.strategy.process(i)
         return self.strategy.results()

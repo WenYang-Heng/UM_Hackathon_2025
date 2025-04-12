@@ -4,12 +4,26 @@ import numpy as np
 class Strategy:
     def __init__(self, data):
         self.data = data
+        self.backtest_result = []
 
-    def on_data(self, i):
+    def record(self, date, price, price_change, position, trade, pnl, equity, drawdown):
+        self.backtest_result.append({
+            'date': date,
+            'price': price,
+            'price_change': price_change,
+            'position': position,
+            'trade': trade,
+            'pnl': pnl,
+            'equity': equity,
+            'drawdown': drawdown
+        })
+
+    def process(self, i):
         pass
 
-class SmaCrossStrategy:
+class SmaCrossStrategy(Strategy):
     def __init__(self, data, window, initial_cash=10000):
+        super().__init__(data)
         self.data = data.reset_index(drop=True)
         self.window = window
         self.initial_cash = initial_cash
@@ -20,7 +34,7 @@ class SmaCrossStrategy:
         self.prev_signal = 0
         self.cumulative_pnl = 0
 
-    def on_data(self, i):
+    def process(self, i):
         row = self.data.iloc[i]
         price = row['close']
         date = row['date']
@@ -66,46 +80,17 @@ class SmaCrossStrategy:
 
         # MDD
         # current equity - max of all previous equity
-        if len(self.history) > 0:
-            max_equity_so_far = max(h['equity'] for h in self.history)
+        if len(self.backtest_result) > 0:
+            max_equity = max(h['equity'] for h in self.backtest_result)
         else:
-            max_equity_so_far = self.cumulative_pnl  # first value
+            max_equity = self.cumulative_pnl
 
-        drawdown = self.cumulative_pnl - max_equity_so_far
-
-        # Execute Trades
-        # if trade_actions > 0:
-        #     # Exit any previous position
-        #     if self.prev_signal == 1:
-        #         self.cash = self.btc * price
-        #         self.btc = 0
-        #     elif self.prev_signal == -1:
-        #         self.cash = self.cash - self.btc * price  # buy back short
-        #         self.btc = 0
-
-        #     # Enter new position
-        #     if signal == 1:
-        #         self.btc = self.cash / price
-        #         self.cash = 0
-        #     elif signal == -1:
-        #         self.btc = -self.cash / price  # simulate borrowing and selling BTC
-        #         self.cash = self.cash * 2      # receive cash from shorting
-
-        self.history.append({
-            'date': date,
-            'price': price,
-            'price_change': price_change,
-            'position': signal,
-            'trade': trade_actions,
-            'pnl': pnl,
-            'equity': self.cumulative_pnl,
-            'drawdown': drawdown
-        })
-
+        drawdown = self.cumulative_pnl - max_equity        
+        self.record(date, price, price_change, signal, trade_actions, pnl, self.cumulative_pnl, drawdown)
         self.prev_signal = signal
 
-    def final_equity(self):
-        return self.history[-1]['equity'] if self.history else self.initial_cash
+    # def final_equity(self):
+    #     return self.backtest_result[-1]['equity'] if self.backtest_result else self.initial_cash
 
     def results(self):
-        return pd.DataFrame(self.history)
+        return pd.DataFrame(self.backtest_result)
