@@ -1,15 +1,12 @@
 import pandas as pd
-from strategy import SmaCrossStrategy
-from broker import Broker
+from .strategy import SmaCrossStrategy
 
 class Backtest:
-    def __init__(self, data, strategy_class):
+    def __init__(self, data, strategy_class, **strategy_kwargs):
         self.data = data
-        self.broker = Broker()
-        self.strategy = strategy_class(data, self.broker)
+        self.strategy = strategy_class(data, **strategy_kwargs)
 
     def run(self):
         for i in range(len(self.data)):
             self.strategy.on_data(i)
-        final_price = self.data.iloc[-1]['close']
-        print("Final Equity:", self.broker.equity(final_price))
+        return self.strategy.results()
