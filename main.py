@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, timezone
 import cybotrade_datasource
 from backtest.backtest import Backtest
-from backtest.strategy import SmaCrossStrategy, ExchangeFlowStrategy  # Assuming you have this class
+from backtest.strategy import SmaCrossStrategy, ExchangeFlowStrategy 
 from backtest.evaluation import evaluate_strategy
 
 load_dotenv()
