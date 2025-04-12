@@ -1,5 +1,11 @@
 import pandas as pd
 import numpy as np
+from .utils import (
+    calculate_drawdown,
+    calculate_price_change,
+    calculate_trade_actions,
+    calculate_pnl
+)
 
 class Strategy:
     def __init__(self, data):
@@ -44,12 +50,7 @@ class SmaCrossStrategy(Strategy):
         # Calculate price change
         # (current row close price/ previous row close price) - 1 or (current row close price - previous row close price) / previous row
         # if it is the first row, price change is 0
-        if i > 0:
-            prev_price = self.data.iloc[i - 1]['close']
-            price_change = (price - prev_price) / prev_price
-        else:
-            prev_price = price
-            price_change = 0
+        price_change = calculate_price_change(i, self.data)
 
         # Generate signal
         signal = self.prev_signal
@@ -63,29 +64,17 @@ class SmaCrossStrategy(Strategy):
                 signal = 0
 
         # Trade actions
-        if signal != self.prev_signal:
-            if abs(signal - self.prev_signal) == 2:
-                trade_actions = 2
-            else:
-                trade_actions = 1
+        trade_actions = calculate_trade_actions(self.prev_signal, signal)
 
         # Calculate PnL
         # (price change * previous position) - (number of trade action for current row * fees)
-        pnl = price_change * self.prev_signal
-        fees = trade_actions * fee_rate
-        pnl -= fees
+        pnl = calculate_pnl(price_change, self.prev_signal, trade_actions, fee_rate)
 
         # Equity
         self.cumulative_pnl += pnl
 
         # MDD
-        # current equity - max of all previous equity
-        if len(self.backtest_result) > 0:
-            max_equity = max(h['equity'] for h in self.backtest_result)
-        else:
-            max_equity = self.cumulative_pnl
-
-        drawdown = self.cumulative_pnl - max_equity        
+        drawdown = calculate_drawdown(self.cumulative_pnl, self.backtest_result)       
         self.record(date, price, price_change, signal, trade_actions, pnl, self.cumulative_pnl, drawdown)
         self.prev_signal = signal
 
@@ -94,3 +83,70 @@ class SmaCrossStrategy(Strategy):
 
     def results(self):
         return pd.DataFrame(self.backtest_result)
+    
+class ExchangeFlowStrategy(Strategy):
+    def __init__(self, data, initial_cash=10000, threshold=1000):
+        super().__init__(data)
+        self.data = data.reset_index(drop=True)
+        self.initial_cash = initial_cash
+        self.threshold = threshold
+
+        self.cash = initial_cash
+        self.btc = 0
+        self.history = []
+        self.prev_signal = 0
+        self.cumulative_pnl = 0
+
+    def process(self, i):
+        row = self.data.iloc[i]
+        date = row['date']
+        price = row['close']
+        inflow = row['inflow_total']
+        outflow = row['outflow_total']
+
+        net_flow = inflow - outflow
+        fee_rate = 0.0006
+        trade_actions = 0
+
+        # Generate signal
+        if net_flow > self.threshold:
+            signal = -1  # Sell
+        elif net_flow < -self.threshold:
+            signal = 1   # Buy
+        else:
+            signal = 0   # Hold
+
+        # Trade actions
+        trade_actions = calculate_trade_actions(self.prev_signal, signal)
+
+        # PnL calculation
+        if i > 0:
+            prev_price = self.data.iloc[i - 1]['close']
+            price_change = (price - prev_price) / prev_price
+        else:
+            price_change = 0
+
+        pnl = calculate_pnl(price_change, self.prev_signal, trade_actions, fee_rate)
+
+        self.cumulative_pnl += pnl
+
+        # Drawdown
+        drawdown = calculate_drawdown(self.cumulative_pnl, self.history)  
+
+        self.history.append({
+            'date': date,
+            'price': price,
+            'position': signal,
+            'net_flow': net_flow,
+            'trade': trade_actions,
+            'pnl': pnl,
+            'equity': self.cumulative_pnl,
+            'drawdown': drawdown
+        })
+
+        self.prev_signal = signal
+
+    def run(self):
+        for i in range(len(self.data)):
+            self.process(i)
+        return pd.DataFrame(self.history)

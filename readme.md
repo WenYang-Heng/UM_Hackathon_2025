@@ -11,7 +11,7 @@ You can verify your Python version by running:
 python --version
 ```
 
-## 📊 Introduction
+## Introduction
 
 This project is a lightweight backtesting library focused on evaluating trading strategies using historical cryptocurrency data. It currently implements a **Simple Moving Average (SMA)** crossover strategy.
 
