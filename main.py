@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import asyncio
 import pandas as pd
 import cybotrade_datasource
@@ -5,9 +7,11 @@ from datetime import datetime, timezone
 from backtest.backtest import Backtest
 from backtest.strategy import SmaCrossStrategy
 from backtest.evaluation import evaluate_strategy
-API_KEY = "hWHSN90KeaFig5qpHxqS1UyI7Z2PpyUcwZso2CoyV4woGLrM"
+
+load_dotenv()
 
 async def main():
+    API_KEY = os.getenv("API_KEY")
     data = await cybotrade_datasource.query_paginated(
         api_key=API_KEY, 
         topic='cryptoquant|btc/market-data/price-ohlcv?window=day', 
